@@ -6,10 +6,6 @@ The placeholder `entropy` needs to be replaced with the actual name of your work
 The `bootstrap.sh` script is designed to help with this process.
 -->
 
-1.  **Bootstrap your new worker:**
-    Run the `bash bootstrap.sh` script located in the root of this template. This script will guide you through renaming `entropy` to your chosen worker name throughout the project files (e.g., directory names, Python files, etc.).
-2.  **Update this README:**
-    After bootstrapping, manually replace all remaining instances of `entropy` in this `README.md` file with your actual worker name. Also, fill in the description section below.
 3.  **Write Tests:**
     Before or alongside developing your worker's core logic, start creating tests.
     *   **Unit Tests:** Create unit tests for individual functions and classes within your worker's `src` directory. Place these in the `tests/` directory.
