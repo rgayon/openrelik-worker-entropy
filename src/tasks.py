@@ -94,14 +94,14 @@ def run_entropy_task(
     high_entropy_thershold = task_config.get("threshold", HIGH_ENTROPY_THRESHOLD)
 
     string_io = io.StringIO()
-    csv_writer = csv.DictWriter(string_io, fieldnames=['path', 'entropy'])
+    csv_writer = csv.DictWriter(string_io, fieldnames=["path", "entropy"])
     csv_writer.writeheader()
 
     for input_file in input_files:
         with open(input_file.get("path"), "rb") as fh:
             filename = input_file.get("display_name")
             entropy = calculate_entropy(fh.read())
-            csv_writer.writerow({'path': filename, 'entropy': str(entropy)})
+            csv_writer.writerow({"path": filename, "entropy": str(entropy)})
             if entropy >= HIGH_ENTROPY_THRESHOLD:
                 high_entropy_files.append([filename, entropy])
 
@@ -125,7 +125,7 @@ def run_entropy_task(
 
     details_section = task_report.add_section()
     for path, entropy in high_entropy_files:
-        details_section.add_bullet(f'{path}: {entropy}', level=1)
+        details_section.add_bullet(f"{path}: {entropy}", level=1)
 
     return create_task_result(
         workflow_id=workflow_id,

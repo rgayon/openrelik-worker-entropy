@@ -6,18 +6,11 @@ The placeholder `entropy` needs to be replaced with the actual name of your work
 The `bootstrap.sh` script is designed to help with this process.
 -->
 
-3.  **Write Tests:**
-    Before or alongside developing your worker's core logic, start creating tests.
-    *   **Unit Tests:** Create unit tests for individual functions and classes within your worker's `src` directory. Place these in the `tests/` directory.
-    *   Refer to the "Test" section below for instructions on how to run your tests.
-4.  **Implement Worker Logic:**
-    Fill in the `src/tasks.py` file (and any other necessary modules) with the core functionality of your worker.
-5.  **Add LICENSE file:**
-    Add a License file to the repository.
-
 # Openrelik worker entropy
 ## Description
-**TODO:** Enter a comprehensive description of your worker here. Explain its purpose, what kind of tasks it handles, and any specific functionalities or integrations it provides.
+
+This worker calculates entropy of every file provided, as well as generate
+a summary containing files with a high entropy (> 7 bits of entropy per byte).
 
 ## Deploy
 Add the below configuration to the OpenRelik docker-compose.yml file.
