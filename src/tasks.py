@@ -1,8 +1,23 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 
-from openrelik_worker_common.reporting import Report
 from openrelik_worker_common.file_utils import create_output_file
-from openrelik_worker_common.task_utils import create_task_result, get_input_files
+from openrelik_worker_common.reporting import Report
+from openrelik_worker_common.task_utils import create_task_result
+from openrelik_worker_common.task_utils import get_input_files
 
 from .app import celery
 
@@ -16,14 +31,27 @@ TASK_METADATA = {
     # Configuration that will be rendered as a web for in the UI, and any data entered
     # by the user will be available to the task function when executing (task_config).
     "task_config": [
+        {
+            "name": "threshold",
+            "label": "High entropy threshold value",
+            "description": f"High entropy threshold value. (default is {HIGH_ENTROPY_THRESHOLD}",
+            "type": "string",
+            "require": False,
+        }
     ],
 }
 
 HIGH_ENTROPY_THRESHOLD = 7.0
 
-def calculate_entropy(data):
+
+def calculate_entropy(data: bytes):
     """Calculate entropy of data, as a number of bits of entropy per byte.
 
+    Args:
+      data: The data to calculate entropy on.
+
+    Returns:
+      A float representing the entropy.
     """
     entropy = 0
     if not data:
@@ -31,7 +59,7 @@ def calculate_entropy(data):
     for x in range(256):
         p_x = float(data.count(x)) / len(data)
         if p_x > 0:
-            entropy += - p_x * math.log(p_x, 2)
+            entropy += -p_x * math.log(p_x, 2)
     return entropy
 
 
@@ -60,9 +88,11 @@ def run_entropy_task(
 
     high_entropy_files = []
 
+    high_entropy_thershold = task_config.get("threshold", HIGH_ENTROPY_THRESHOLD)
+
     for input_file in input_files:
         # Run the command
-        with open(input_file.get('path'), "rb") as fh:
+        with open(input_file.get("path"), "rb") as fh:
             entropy = calculate_entropy(fh.read())
             if entropy >= HIGH_ENTROPY_THRESHOLD:
                 filename = input_file.get("display_name")
@@ -71,25 +101,26 @@ def run_entropy_task(
     task_report = Report("Entropy analyzer report")
 
     results_summary = (
-            f"Found {len(high_entropy_files)} files "
-            f"with high entropy (>{HIGH_ENTROPY_THRESHOLD})."
+        f"Found {len(high_entropy_files)} files "
+        f"with high entropy (>{HIGH_ENTROPY_THRESHOLD})."
     )
     summary_section = task_report.add_section()
 
     result_markdown = "# Files with high entropy"
-    result_markdown = '\n'.join(
-            [ f" * {path}: {entropy}" for path, entropy in high_entropy_files ])
+    result_markdown = "\n".join(
+        [f" * {path}: {entropy}" for path, entropy in high_entropy_files]
+    )
 
     summary_section.add_paragraph(results_summary)
 
     output_file = create_output_file(
-            output_path,
-            display_name="entropy_results",
-            extension=".md",
-            data_type="openrelik:entropy:report",
-        )
+        output_path,
+        display_name="entropy_results",
+        extension=".md",
+        data_type="openrelik:entropy:report",
+    )
     with open(output_file.path, "w") as outfile:
-            outfile.write(result_markdown)
+        outfile.write(result_markdown)
 
     return create_task_result(
         output_files=[output_file.to_dict()],
