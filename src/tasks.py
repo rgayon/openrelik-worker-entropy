@@ -1,3 +1,5 @@
+import math
+
 import subprocess
 
 from openrelik_worker_common.file_utils import create_output_file
@@ -6,24 +8,27 @@ from openrelik_worker_common.task_utils import create_task_result, get_input_fil
 from .app import celery
 
 # Task name used to register and route the task to the correct queue.
-TASK_NAME = "openrelik-worker-TEMPLATEWORKERNAME.tasks.your_task_name"
+TASK_NAME = "openrelik-worker-entropy.tasks.entropy"
 
 # Task metadata for registration in the core system.
 TASK_METADATA = {
-    "display_name": "openrelik-worker-TEMPLATEWORKERNAME",
-    "description": "TEMPLATEDESC",
+    "display_name": "openrelik-worker-entropy",
+    "description": "Calculate entropy of files",
     # Configuration that will be rendered as a web for in the UI, and any data entered
     # by the user will be available to the task function when executing (task_config).
     "task_config": [
-        {
-            "name": "<REPLACE_WITH_NAME>",
-            "label": "<REPLACE_WITH_LABEL>",
-            "description": "<REPLACE_WITH_DESCRIPTION>",
-            "type": "<REPLACE_WITH_TYPE>",  # Types supported: text, textarea, checkbox
-            "required": False,
-        },
     ],
 }
+
+def calculate_entropy(data):
+    entropy = 0
+    if not data:
+        return 0
+    for x in range(256):
+        p_x = float(data.count(x)) / len(data)
+        if p_x > 0:
+            entropy += - p_x * math.log(p_x, 2)
+    return entropy
 
 
 @celery.task(bind=True, name=TASK_NAME, metadata=TASK_METADATA)
@@ -48,27 +53,12 @@ def command(
         Base64-encoded dictionary containing task results.
     """
     input_files = get_input_files(pipe_result, input_files or [])
-    output_files = []
-    base_command = ["<REPLACE_WITH_COMMAND>"]
-    base_command_string = " ".join(base_command)
 
     for input_file in input_files:
-        output_file = create_output_file(
-            output_path,
-            display_name=input_file.get("display_name"),
-            extension="<REPLACE_WITH_FILE_EXTENSION>",
-            data_type="<[OPTIONAL]_REPLACE_WITH_DATA_TYPE>",
-        )
-        command = base_command + [input_file.get("path")]
-
         # Run the command
-        with open(output_file.path, "w") as fh:
-            subprocess.Popen(command, stdout=fh)
+        with open(input_file.path, "w") as fh:
+            entropy = calculate_entropy(fh.read())
 
-        output_files.append(output_file.to_dict())
-
-    if not output_files:
-        raise RuntimeError("<REPLACE_WITH_ERROR_STRING>")
 
     return create_task_result(
         output_files=output_files,
