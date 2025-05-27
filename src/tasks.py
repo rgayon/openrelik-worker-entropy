@@ -62,10 +62,11 @@ def run_entropy_task(
 
     for input_file in input_files:
         # Run the command
-        with open(input_file.path, "w") as fh:
+        with open(input_file.get('path'), "rb") as fh:
             entropy = calculate_entropy(fh.read())
             if entropy >= HIGH_ENTROPY_THRESHOLD:
-                high_entropy_files.append([input_file.path, entropy])
+                filename = input_file.get("display_name")
+                high_entropy_files.append([filename, entropy])
 
     task_report = Report("Entropy analyzer report")
 
@@ -75,7 +76,9 @@ def run_entropy_task(
     )
     summary_section = task_report.add_section()
 
-    result_markdown = [ f"{path}: {entropy}" for path, entropy in high_entropy_files ]
+    result_markdown = "# Files with high entropy"
+    result_markdown = '\n'.join(
+            [ f" * {path}: {entropy}" for path, entropy in high_entropy_files ])
 
     summary_section.add_paragraph(results_summary)
 
