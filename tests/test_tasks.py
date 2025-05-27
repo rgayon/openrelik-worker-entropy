@@ -23,6 +23,7 @@ class TestEntropyTask:
     def test_binary_low_entropy(self):
         with open('test_data/hello.bin', 'rb') as random_file:
             entropy = calculate_entropy(random_file.read())
+            assert (entropy > 0 )
             assert (entropy < HIGH_ENTROPY_THRESHOLD)
 
     def test_binary_high_entropy(self):

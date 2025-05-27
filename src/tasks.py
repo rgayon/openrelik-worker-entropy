@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import csv
+import io
 import math
 
 from openrelik_worker_common.file_utils import create_output_file
@@ -24,27 +26,28 @@ from .app import celery
 # Task name used to register and route the task to the correct queue.
 TASK_NAME = "openrelik-worker-entropy.tasks.entropy"
 
+# Default value for high entropy
+HIGH_ENTROPY_THRESHOLD = 7.0
+
 # Task metadata for registration in the core system.
 TASK_METADATA = {
-    "display_name": "openrelik-worker-entropy",
-    "description": "Calculate entropy of files",
+    "display_name": "High Entropy",
+    "description": "Detect files with entropy.",
     # Configuration that will be rendered as a web for in the UI, and any data entered
     # by the user will be available to the task function when executing (task_config).
     "task_config": [
         {
             "name": "threshold",
-            "label": "High entropy threshold value",
-            "description": f"High entropy threshold value. (default is {HIGH_ENTROPY_THRESHOLD}",
+            "label": "Entropy threshold value",
+            "description": f"Entropy threshold value. (default is {HIGH_ENTROPY_THRESHOLD})",
             "type": "string",
             "require": False,
         }
     ],
 }
 
-HIGH_ENTROPY_THRESHOLD = 7.0
 
-
-def calculate_entropy(data: bytes):
+def calculate_entropy(data: bytes) -> float:
     """Calculate entropy of data, as a number of bits of entropy per byte.
 
     Args:
@@ -90,40 +93,43 @@ def run_entropy_task(
 
     high_entropy_thershold = task_config.get("threshold", HIGH_ENTROPY_THRESHOLD)
 
+    string_io = io.StringIO()
+    csv_writer = csv.DictWriter(string_io, fieldnames=['path', 'entropy'])
+    csv_writer.writeheader()
+
     for input_file in input_files:
-        # Run the command
         with open(input_file.get("path"), "rb") as fh:
+            filename = input_file.get("display_name")
             entropy = calculate_entropy(fh.read())
+            csv_writer.writerow({'path': filename, 'entropy': str(entropy)})
             if entropy >= HIGH_ENTROPY_THRESHOLD:
-                filename = input_file.get("display_name")
                 high_entropy_files.append([filename, entropy])
 
-    task_report = Report("Entropy analyzer report")
+    csv_result = create_output_file(
+        output_path,
+        display_name="entropy_results",
+        extension=".csv",
+        data_type="openrelik:entropy:results",
+    )
+    with open(csv_result.path, "w") as outfile:
+        outfile.write(string_io.getvalue())
 
+    task_report = Report("Entropy analyzer report")
     results_summary = (
         f"Found {len(high_entropy_files)} files "
         f"with high entropy (>{HIGH_ENTROPY_THRESHOLD})."
     )
+    task_report.summary = results_summary
     summary_section = task_report.add_section()
-
-    result_markdown = "# Files with high entropy"
-    result_markdown = "\n".join(
-        [f" * {path}: {entropy}" for path, entropy in high_entropy_files]
-    )
-
     summary_section.add_paragraph(results_summary)
 
-    output_file = create_output_file(
-        output_path,
-        display_name="entropy_results",
-        extension=".md",
-        data_type="openrelik:entropy:report",
-    )
-    with open(output_file.path, "w") as outfile:
-        outfile.write(result_markdown)
+    details_section = task_report.add_section()
+    for path, entropy in high_entropy_files:
+        details_section.add_bullet(f'{path}: {entropy}', level=1)
 
     return create_task_result(
-        output_files=[output_file.to_dict()],
         workflow_id=workflow_id,
+        output_files=[csv_result.to_dict()],
+        task_report=task_report.to_dict(),
         meta={},
     )
